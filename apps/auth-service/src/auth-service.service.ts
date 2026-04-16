@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   OnModuleInit,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ClientKafka } from '@nestjs/microservices';
@@ -51,5 +52,60 @@ export class AuthServiceService implements OnModuleInit {
     });
 
     return { message: 'User registered successfully', userId: user.id };
+  }
+
+  async login(email: string, password: string) {
+    const [user] = await this.dbService.db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload = { id: user.id, email: user.email };
+    const token = this.jwtService.sign(payload);
+
+    this.kafkaClient.emit(KAFKA_TOPICS.USER_LOGIN, {
+      email: user.email,
+      name: user.name,
+    });
+
+    return {
+      accessToken: token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    };
+  }
+
+  async getProfile(userId: string) {
+    const [user] = await this.dbService.db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return { user };
   }
 }
