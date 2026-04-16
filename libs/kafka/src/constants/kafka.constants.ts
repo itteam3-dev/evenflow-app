@@ -1,4 +1,4 @@
-export const KAFKA_BROKER = process.env.KAFKA_BROKER || 'localhost:9092';
+export const KAFKA_BROKER = process.env.KAFKA_BROKER || 'localhost:9093';
 export const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'eventfowapp';
 export const KAFKA_CONSUMER_GROUP = 'eventfowapp-consumer';
 
